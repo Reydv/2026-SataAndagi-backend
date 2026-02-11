@@ -1,0 +1,6 @@
+@_2026_SataAndagi_backend_HostAddress = http://localhost:5244
+
+GET {{_2026_SataAndagi_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

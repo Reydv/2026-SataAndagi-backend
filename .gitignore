@@ -1,0 +1,25 @@
+# Section: Build Results
+[Bb]in/
+[Oo]bj/
+
+# Section: User-Specific Files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Section: VS Code
+.vscode/
+
+# Section: Environment Variables (Security)
+.env
+appsettings.Development.json
+appsettings.Local.json
+
+# Section: OS Generated
+.DS_Store
+Thumbs.db
+
+# Section: Rider / JetBrains
+.idea/
+*.sln.iml
