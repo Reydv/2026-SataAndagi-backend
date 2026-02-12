@@ -23,3 +23,28 @@ Thumbs.db
 # Section: Rider / JetBrains
 .idea/
 *.sln.iml
+
+# --- IGNORE ALL BINARIES ---
+*.dll
+*.exe
+*.pdb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.log
+.DS_Store
+Thumbs.db
+
+# --- IGNORE BUILD FOLDERS ---
+bin/
+obj/
+**/bin/
+**/obj/
+.vs/
+.vscode/
+
+# --- SECRETS ---
+.env
+appsettings.Local.json
+appsettings.Development.json
