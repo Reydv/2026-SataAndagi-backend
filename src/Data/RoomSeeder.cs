@@ -10,11 +10,11 @@ public static class RoomSeeder
 
         var rooms = new List<Room>
         {
-            new Room { Name = "Lab A", Sector = "Computing Block", Capacity = 30 },
-            new Room { Name = "Lab B", Sector = "Computing Block", Capacity = 30 },
-            new Room { Name = "Auditorium", Sector = "Main Building", Capacity = 200 },
-            new Room { Name = "Meeting Room 1", Sector = "Admin Block", Capacity = 10 },
-            new Room { Name = "Classroom 101", Sector = "Main Building", Capacity = 50 }
+            new Room { Name = "Lab A", Sector = "Gedung D4", Capacity = 30 },
+            new Room { Name = "Lab B", Sector = "Gedung D4", Capacity = 30 },
+            new Room { Name = "Auditorium", Sector = "Gedung Pascasarjana", Capacity = 200 },
+            new Room { Name = "Meeting Room 1", Sector = "Gedung Pascasarjana", Capacity = 10 },
+            new Room { Name = "Kelas 301", Sector = "Gedung Pascasarjana", Capacity = 50 }
         };
 
         context.Rooms.AddRange(rooms);
