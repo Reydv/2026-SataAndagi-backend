@@ -3,6 +3,7 @@ using _2026_SataAndagi_backend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!))
     };
 });
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();     
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
