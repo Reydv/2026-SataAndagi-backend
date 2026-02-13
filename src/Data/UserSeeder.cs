@@ -1,4 +1,5 @@
 using _2026_SataAndagi_backend.Models;
+using BCrypt.Net;
 
 namespace _2026_SataAndagi_backend.Data;
 
