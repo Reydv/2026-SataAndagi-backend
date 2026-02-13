@@ -45,7 +45,9 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<_2026_SataAndagi_backend.Data.ApplicationDbContext>();
     // context.Database.Migrate(); // Optional: Automatically runs migrations
     _2026_SataAndagi_backend.Data.UserSeeder.Seed(context);
+    _2026_SataAndagi_backend.Data.RoomSeeder.Seed(context);
 }
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
