@@ -1,4 +1,5 @@
 using _2026_SataAndagi_backend.Models;
+using BCrypt.Net;
 
 namespace _2026_SataAndagi_backend.Data;
 
@@ -9,10 +10,12 @@ public static class UserSeeder
         // 1. Check if database is empty
         if (context.Users.Any()) return;
 
+        string passwordHash = BCrypt.Net.BCrypt.HashPassword("123");
+
         // 2. Create Users
-        var adminUser = new User { Name = "Admin Chiyo", IdentityNumber = "ADM001", PasswordHash = "123", Role = "Admin" };
-        var studentUser = new User { Name = "Budi", IdentityNumber = "3124600061", PasswordHash = "123", Role = "Student" };
-        var professorUser = new User { Name = "Dr. Agus", IdentityNumber = "19800001", PasswordHash = "123", Role = "Professor" };
+        var adminUser = new User { Name = "Admin Chiyo", IdentityNumber = "ADM001", PasswordHash = passwordHash, Role = "Admin" };
+        var studentUser = new User { Name = "Budi", IdentityNumber = "3124600061", PasswordHash = passwordHash, Role = "Student" };
+        var professorUser = new User { Name = "Dr. Agus", IdentityNumber = "19800001", PasswordHash = passwordHash, Role = "Professor" };
 
         context.Users.AddRange(adminUser, studentUser, professorUser);
         context.SaveChanges(); // Save to generate Ids
