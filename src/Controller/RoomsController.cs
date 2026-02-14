@@ -82,4 +82,61 @@ public class RoomsController : ControllerBase
         await _context.SaveChangesAsync();
         return NoContent();
     }
+
+    // GET: api/rooms/availability
+    [HttpGet("availability")]
+    public async Task<ActionResult<IEnumerable<RoomAvailabilityDto>>> SearchAvailableRooms(
+        [FromQuery] DateTime? startDate, 
+        [FromQuery] DateTime? endDate, 
+        [FromQuery] string? sector, 
+        [FromQuery] int minCapacity = 0,
+        [FromQuery] string? search = null) // Added search parameter 
+    {
+        // 1. Set Defaults: Current Time to +3 Hours 
+        DateTime start = startDate ?? DateTime.UtcNow;
+        DateTime end = endDate ?? DateTime.UtcNow.AddHours(3);
+
+        if (end <= start) return BadRequest("End time must be after start time.");
+
+        // 2. Base Query: Only Active Rooms
+        var query = _context.Rooms.AsQueryable()
+            .Where(r => r.IsAvailable && !r.IsDeleted);
+
+        // 3. Apply Filters
+        if (!string.IsNullOrEmpty(sector))
+        {
+            query = query.Where(r => r.Sector == sector); // 
+        }
+
+        if (minCapacity > 0)
+        {
+            query = query.Where(r => r.Capacity >= minCapacity); // 
+        }
+
+        // Name Search (Case-Insensitive Partial Match) 
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(r => r.Name.Contains(search));
+        }
+
+        // 4. Exclusion Logic: Overlap Check
+        // Exclude ONLY if there is an overlapping APPROVED reservation .
+        // Pending reservations are ignored (users can compete) .
+        var availableRooms = await query
+            .Where(r => !_context.Reservations.Any(res => 
+                res.RoomId == r.Id &&
+                res.Status == ReservationStatus.Approved && 
+                res.StartTime < end && 
+                res.EndTime > start))
+            .Select(r => new RoomAvailabilityDto 
+            {
+                Id = r.Id, // Included Id in response 
+                Name = r.Name,
+                Sector = r.Sector,
+                Capacity = r.Capacity
+            })
+            .ToListAsync();
+
+        return Ok(availableRooms);
+    }
 }
