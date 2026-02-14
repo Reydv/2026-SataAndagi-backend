@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Student> Students { get; set; }
     public DbSet<Professor> Professors { get; set; }
     public DbSet<Room> Rooms { get; set; }
+    public DbSet<Reservation> Reservations { get; set;}
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,5 +37,6 @@ public class ApplicationDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
         
         modelBuilder.Entity<Room>().HasQueryFilter(r => !r.IsDeleted);
+        modelBuilder.Entity<Reservation>().HasQueryFilter(r => r.DeletedAt == null);
     }
 }
