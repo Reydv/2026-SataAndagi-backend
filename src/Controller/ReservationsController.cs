@@ -177,7 +177,7 @@ public class ReservationsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new { Message = $"Reservation updated to {newStatus}" });
     }
-    
+
     // PUT: api/reservations/{id}
     // Use Case: Admin Correction (Fixing mistakes without triggering cascade)
     [HttpPut("{id}")]
@@ -207,5 +207,44 @@ public class ReservationsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    // GET: api/reservations/{id}
+    // Equivalent to Laravel's "show" method
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ReservationDetailDto>> GetReservation(int id)
+    {
+        // 1. Find the Reservation with Relations
+        var reservation = await _context.Reservations
+            .Include(r => r.Room)
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (reservation == null) return NotFound();
+
+        // 2. Security Check (Authorization)
+        // Rule: You can only see it if it's YOURS or you are an ADMIN.
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var isAdmin = User.IsInRole("Admin");
+
+        if (reservation.UserId != currentUserId && !isAdmin)
+        {
+            return Forbid(); // Return 403 Forbidden
+        }
+
+        // 3. Map to DTO
+        var dto = new ReservationDetailDto
+        {
+            Id = reservation.Id,
+            RoomName = reservation.Room?.Name ?? "Unknown Room",
+            UserName = reservation.User?.Name ?? "Unknown User",
+            StartTime = reservation.StartTime,
+            EndTime = reservation.EndTime,
+            Purpose = reservation.Purpose,
+            Status = reservation.Status.ToString(),
+            CreatedAt = reservation.CreatedAt
+        };
+
+        return Ok(dto);
     }
 }
