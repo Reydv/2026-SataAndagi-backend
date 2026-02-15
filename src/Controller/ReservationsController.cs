@@ -177,4 +177,35 @@ public class ReservationsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new { Message = $"Reservation updated to {newStatus}" });
     }
+    
+    // PUT: api/reservations/{id}
+    // Use Case: Admin Correction (Fixing mistakes without triggering cascade)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateReservation(int id, [FromBody] UpdateReservationDto request)
+    {
+        var reservation = await _context.Reservations.FindAsync(id);
+        if (reservation == null) return NotFound();
+
+        // 1. Validate Status
+        if (!Enum.TryParse<ReservationStatus>(request.Status, true, out var newStatus))
+        {
+            return BadRequest("Invalid status.");
+        }
+
+        // 2. Apply Updates (Manual Override)
+        reservation.RoomId = request.RoomId;
+        reservation.StartTime = request.StartTime;
+        reservation.EndTime = request.EndTime;
+        reservation.Purpose = request.Purpose;
+        reservation.Status = newStatus; // Just sets the status, no side effects
+
+        // 3. Optional: Basic Conflict Check (Warn Admin but don't block?)
+        // For a "Correction" endpoint, we usually assume the Admin knows what they are doing,
+        // so we save directly.
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
 }
