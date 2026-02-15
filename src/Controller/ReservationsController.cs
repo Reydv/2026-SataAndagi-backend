@@ -36,10 +36,13 @@ public class ReservationsController : ControllerBase
         // 3. CRITICAL: Availability Check 
         // Rule: Block ONLY if there is an overlapping APPROVED reservation.
         // We DO NOT block if there are only PENDING reservations (Queue system).
-        bool isBlocked = await _context.Reservations.AnyAsync(r => 
-            r.RoomId == request.RoomId &&
-            r.Status == ReservationStatus.Approved && // Only Approved blocks it
-            r.StartTime < request.EndTime && 
+        // Rule: User cannot request the SAME room if they already have a Pending/Approved request overlapping this time.
+        bool userHasConflict = await _context.Reservations.AnyAsync(r =>
+            r.UserId == userId &&                 // Check current user's history
+            r.RoomId == request.RoomId &&         // Check specific room
+            r.Status != ReservationStatus.Rejected &&  // Ignore Rejected
+            r.Status != ReservationStatus.Cancelled && // Ignore Cancelled
+            r.StartTime < request.EndTime &&      // Overlap Check
             r.EndTime > request.StartTime);
 
         if (isBlocked)
@@ -54,6 +57,7 @@ public class ReservationsController : ControllerBase
             UserId = userId,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
+            Purpose = request.Purpose,
             Status = ReservationStatus.Pending 
         };
 
