@@ -95,7 +95,10 @@ public class ReservationsController : ControllerBase
     public async Task<ActionResult<IEnumerable<ReservationDetailDto>>> GetReservations(
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? status = null) // Filter Parameter
+        [FromQuery] string? search = null,    // Priority Filter
+        [FromQuery] string? status = null,    // Secondary Filter
+        [FromQuery] DateTime? startDate = null, // Secondary Filter
+        [FromQuery] DateTime? endDate = null)   // Secondary Filter
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var userRole = User.FindFirst(ClaimTypes.Role)!.Value;
@@ -112,10 +115,39 @@ public class ReservationsController : ControllerBase
             query = query.Where(r => r.UserId == userId);
         }
 
-        // 3. Status Filter (Optional)
-        if (!string.IsNullOrEmpty(status) && Enum.TryParse<ReservationStatus>(status, true, out var statusEnum))
+        // 3. PRIORITY LOGIC
+        if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(r => r.Status == statusEnum);
+            // CASE A: Search Mode (Ignores Status/Date filters)
+            // Searches Room Name or Purpose. 
+            // If Admin, also searches the Student/Professor Name.
+            query = query.Where(r => 
+                r.Room!.Name.Contains(search) || 
+                r.Purpose.Contains(search) ||
+                (userRole == "Admin" && r.User!.Name.Contains(search)) // Only Admin searches User names
+            );
+        }
+        else
+        {
+            // CASE B: Standard Filter Mode (Status + Dates)
+            
+            // Filter by Status
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<ReservationStatus>(status, true, out var statusEnum))
+            {
+                query = query.Where(r => r.Status == statusEnum);
+            }
+
+            // Filter by Start Date (Events starting after this date)
+            if (startDate.HasValue)
+            {
+                query = query.Where(r => r.StartTime >= startDate.Value);
+            }
+
+            // Filter by End Date (Events ending before this date)
+            if (endDate.HasValue)
+            {
+                query = query.Where(r => r.EndTime <= endDate.Value);
+            }
         }
 
         // 4. Pagination & Mapping
