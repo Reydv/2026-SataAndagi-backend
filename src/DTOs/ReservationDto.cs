@@ -32,3 +32,12 @@ public class UpdateReservationStatusDto
 {
     public string Status { get; set; } = string.Empty; // "Approved" or "Rejected"
 }
+
+public class UpdateReservationDto
+{
+    public int RoomId { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+    public string Purpose { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty; // Admin can fix status here
+}
