@@ -21,12 +21,14 @@ public class RoomsController : ControllerBase
 
     // GET: api/rooms
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<IEnumerable<Room>>> GetRooms()
     {
         return await _context.Rooms.ToListAsync();
     }
 
     // GET: api/rooms/5
+    [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
     public async Task<ActionResult<Room>> GetRoom(int id)
     {
@@ -37,6 +39,7 @@ public class RoomsController : ControllerBase
 
     // POST: api/rooms
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<Room>> CreateRoom(CreateRoomDto request)
     {
         var room = new Room
@@ -55,6 +58,7 @@ public class RoomsController : ControllerBase
 
     // PUT: api/rooms/5
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateRoom(int id, UpdateRoomDto request)
     {
         var room = await _context.Rooms.FindAsync(id);
@@ -71,6 +75,7 @@ public class RoomsController : ControllerBase
 
     // DELETE: api/rooms/5 (Soft Delete)
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteRoom(int id)
     {
         var room = await _context.Rooms.FindAsync(id);
