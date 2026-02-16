@@ -36,10 +36,13 @@ public class ReservationsController : ControllerBase
         // 3. CRITICAL: Availability Check 
         // Rule: Block ONLY if there is an overlapping APPROVED reservation.
         // We DO NOT block if there are only PENDING reservations (Queue system).
-        bool isBlocked = await _context.Reservations.AnyAsync(r => 
-            r.RoomId == request.RoomId &&
-            r.Status == ReservationStatus.Approved && // Only Approved blocks it
-            r.StartTime < request.EndTime && 
+        // Rule: User cannot request the SAME room if they already have a Pending/Approved request overlapping this time.
+        bool userHasConflict = await _context.Reservations.AnyAsync(r =>
+            r.UserId == userId &&                 // Check current user's history
+            r.RoomId == request.RoomId &&         // Check specific room
+            r.Status != ReservationStatus.Rejected &&  // Ignore Rejected
+            r.Status != ReservationStatus.Cancelled && // Ignore Cancelled
+            r.StartTime < request.EndTime &&      // Overlap Check
             r.EndTime > request.StartTime);
 
         if (isBlocked)
@@ -54,6 +57,7 @@ public class ReservationsController : ControllerBase
             UserId = userId,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
+            Purpose = request.Purpose,
             Status = ReservationStatus.Pending 
         };
 
@@ -84,5 +88,163 @@ public class ReservationsController : ControllerBase
         
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    // GET: api/reservations?page=1&pageSize=10&status=Pending
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<ReservationDetailDto>>> GetReservations(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? status = null) // Filter Parameter
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userRole = User.FindFirst(ClaimTypes.Role)!.Value;
+
+        // 1. Base Query with Relations
+        var query = _context.Reservations
+            .Include(r => r.Room)
+            .Include(r => r.User)
+            .AsQueryable();
+
+        // 2. Role Filter: Users see ONLY their own; Admins see ALL
+        if (userRole != "Admin")
+        {
+            query = query.Where(r => r.UserId == userId);
+        }
+
+        // 3. Status Filter (Optional)
+        if (!string.IsNullOrEmpty(status) && Enum.TryParse<ReservationStatus>(status, true, out var statusEnum))
+        {
+            query = query.Where(r => r.Status == statusEnum);
+        }
+
+        // 4. Pagination & Mapping
+        var reservations = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new ReservationDetailDto
+            {
+                Id = r.Id,
+                RoomName = r.Room!.Name,
+                UserName = r.User!.Name,
+                StartTime = r.StartTime,
+                EndTime = r.EndTime,
+                Status = r.Status.ToString(),
+                Purpose = r.Purpose,
+                CreatedAt = r.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(reservations);
+    }
+
+    // PATCH: api/reservations/{id}/status (Admin Only)
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateReservationStatusDto request)
+    {
+        // 1. Validate Input Status
+        if (!Enum.TryParse<ReservationStatus>(request.Status, true, out var newStatus))
+        {
+            return BadRequest("Invalid status. Use 'Approved' or 'Rejected'.");
+        }
+
+        var reservation = await _context.Reservations.FindAsync(id);
+        if (reservation == null) return NotFound();
+
+        // 2. Apply Status Change
+        reservation.Status = newStatus;
+
+        // 3. Cascading Rejection Logic (Only if Approved)
+        // If we Approve this, we must Reject all other Pending requests that overlap.
+        if (newStatus == ReservationStatus.Approved)
+        {
+            var conflicts = await _context.Reservations
+                .Where(r => r.RoomId == reservation.RoomId &&
+                            r.Id != reservation.Id && // Exclude self
+                            r.Status == ReservationStatus.Pending && // Only affect Pending ones
+                            r.StartTime < reservation.EndTime && // Overlap Check
+                            r.EndTime > reservation.StartTime)
+                .ToListAsync();
+
+            foreach (var conflict in conflicts)
+            {
+                conflict.Status = ReservationStatus.Rejected;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { Message = $"Reservation updated to {newStatus}" });
+    }
+
+    // PUT: api/reservations/{id}
+    // Use Case: Admin Correction (Fixing mistakes without triggering cascade)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateReservation(int id, [FromBody] UpdateReservationDto request)
+    {
+        var reservation = await _context.Reservations.FindAsync(id);
+        if (reservation == null) return NotFound();
+
+        // 1. Validate Status
+        if (!Enum.TryParse<ReservationStatus>(request.Status, true, out var newStatus))
+        {
+            return BadRequest("Invalid status.");
+        }
+
+        // 2. Apply Updates (Manual Override)
+        reservation.RoomId = request.RoomId;
+        reservation.StartTime = request.StartTime;
+        reservation.EndTime = request.EndTime;
+        reservation.Purpose = request.Purpose;
+        reservation.Status = newStatus; // Just sets the status, no side effects
+
+        // 3. Optional: Basic Conflict Check (Warn Admin but don't block?)
+        // For a "Correction" endpoint, we usually assume the Admin knows what they are doing,
+        // so we save directly.
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // GET: api/reservations/{id}
+    // Equivalent to Laravel's "show" method
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ReservationDetailDto>> GetReservation(int id)
+    {
+        // 1. Find the Reservation with Relations
+        var reservation = await _context.Reservations
+            .Include(r => r.Room)
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (reservation == null) return NotFound();
+
+        // 2. Security Check (Authorization)
+        // Rule: You can only see it if it's YOURS or you are an ADMIN.
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var isAdmin = User.IsInRole("Admin");
+
+        if (reservation.UserId != currentUserId && !isAdmin)
+        {
+            return Forbid(); // Return 403 Forbidden
+        }
+
+        // 3. Map to DTO
+        var dto = new ReservationDetailDto
+        {
+            Id = reservation.Id,
+            RoomName = reservation.Room?.Name ?? "Unknown Room",
+            UserName = reservation.User?.Name ?? "Unknown User",
+            StartTime = reservation.StartTime,
+            EndTime = reservation.EndTime,
+            Purpose = reservation.Purpose,
+            Status = reservation.Status.ToString(),
+            CreatedAt = reservation.CreatedAt
+        };
+
+        return Ok(dto);
     }
 }

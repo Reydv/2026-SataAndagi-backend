@@ -20,6 +20,7 @@ public class Reservation
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     
+    public string Purpose { get; set; } = string.Empty;
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
