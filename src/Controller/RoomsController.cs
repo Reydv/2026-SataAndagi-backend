@@ -9,7 +9,7 @@ namespace _2026_SataAndagi_backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-// [Authorize(Roles = "Admin")] // Uncomment to restrict access
+[Authorize]
 public class RoomsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
