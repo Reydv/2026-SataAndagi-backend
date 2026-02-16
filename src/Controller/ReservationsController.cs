@@ -45,7 +45,7 @@ public class ReservationsController : ControllerBase
             r.StartTime < request.EndTime &&      // Overlap Check
             r.EndTime > request.StartTime);
 
-        if (isBlocked)
+        if (userHasConflict)
         {
             return Conflict("This room is already fully booked (Approved) for this time slot.");
         }
