@@ -19,32 +19,28 @@ public class UsersController : ControllerBase
         _context = context;
     }
 
-    // GET: api/users/profile
-    [HttpGet("profile")]
-    public async Task<ActionResult<UserProfileDto>> GetMyProfile()
+    // GET: api/users/{id}
+    // Use Case: Admin viewing a specific user's details
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")] // Critical: Restrict to Admin
+    public async Task<ActionResult<UserProfileDto>> GetUserInfo(int id)
     {
-        // 1. Identify User from Token
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null) return Unauthorized();
-        int userId = int.Parse(userIdClaim.Value);
-
-        // 2. Fetch User WITH their specific profile
-        // We use "Include" to join the Student/Professor tables
+        // 1. Fetch User with specific Profile Data
         var user = await _context.Users
             .Include(u => u.StudentProfile)
             .Include(u => u.ProfessorProfile)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == id);
 
-        if (user == null) return NotFound("User account not found.");
+        if (user == null) return NotFound("User ID not found.");
 
-        // 3. Map to DTO
+        // 2. Map to DTO (Same DTO as before, but for the target ID)
         var profile = new UserProfileDto
         {
             Id = user.Id,
             Name = user.Name,
             IdentityNumber = user.IdentityNumber,
             Role = user.Role,
-            // Determine which profile data to fill
+            // Smart Mapping: Pull department from whichever profile exists
             Department = user.StudentProfile?.Department ?? user.ProfessorProfile?.Department,
             Degree = user.StudentProfile?.Degree,
             ManagementPosition = user.ProfessorProfile?.ManagementPosition
