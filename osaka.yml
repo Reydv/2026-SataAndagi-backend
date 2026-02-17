@@ -4,7 +4,7 @@ services:
     container_name: sataandagi-db
     environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=uncrackable
+      - SA_PASSWORD=uncrackable_123A
     ports:
       - "1433:1433"
     volumes:
